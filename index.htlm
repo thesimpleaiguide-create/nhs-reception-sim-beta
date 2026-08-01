@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NHS Reception Simulator - Miller's Law (Multi-Turn)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e293b; /* Dark slate background */
+            color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: #273549; /* Slightly lighter slate for containers */
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1, h2 {
+            color: #60a5fa; /* Blue accent for headers */
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #cbd5e1;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 80%;
+            padding: 12px;
+            margin: 20px 0;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background-color: #334155;
+            color: white;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            background-color: #3b82f6; /* Blue button */
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            margin: 5px;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+
+        button:disabled {
+            background-color: #475569;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .record-btn {
+            background-color: #dc2626; /* Red for recording */
+        }
+        .record-btn:hover {
+            background-color: #b91c1c;
+        }
+
+        .video-container {
+            margin-bottom: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+            border: 1px solid #475569;
+        }
+
+        video {
+            width: 100%;
+            display: block;
+        }
+
+        .text-box {
+            background-color: #334155;
+            padding: 15px;
+            border-radius: 6px;
+            min-height: 80px;
+            margin-bottom: 15px;
+            text-align: left;
+            border: 1px solid #475569;
+            line-height: 1.5;
+        }
+
+        #evaluation-box {
+            background-color: #166534; /* Green success background */
+            border-color: #14532d;
+            display: none;
+        }
+        
+        #eval-score {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .progress-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .dot {
+            height: 12px;
+            width: 12px;
+            background-color: #475569;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.active {
+            background-color: #60a5fa;
+        }
+
+        .dot.completed {
+            background-color: #10b981;
+        }
+        
+        .dot.failed {
+            background-color: #ef4444;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #1e293b;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #475569;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            color: #ef4444; /* Red alert */
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            color: #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="error-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                ⚠️ Notice
+            </div>
+            <div id="modal-text" class="modal-body">
+                An error occurred.
+            </div>
+            <button onclick="closeModal()" style="width: 100%; background-color: #475569;">Close</button>
+        </div>
+    </div>
+
+    <div id="login-screen" class="container">
+        <h1>Simulator Alpha (Miller's Law)</h1>
+        <p class="subtitle">Please enter your API key to access the multi-turn training environment.</p>
+        <input type="password" id="api-key-input" placeholder="Paste Google Gemini API Key here (starts with AIza...)" autocomplete="off">
+        <br>
+        <button id="unlock-btn">Unlock Simulator</button>
+    </div>
+
+    <div id="intro-screen" class="container" style="display: none;">
+        <h2>Before We Begin: Audio Setup</h2>
+        <p class="subtitle">This interactive simulation requires your microphone so you can speak directly to the patient.</p>
+        
+        <div style="background-color: #334155; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: left; border: 1px solid #475569;">
+            <p style="margin: 10px 0;"><strong>Step 1:</strong> Click the button below.</p>
+            <p style="margin: 10px 0;"><strong>Step 2:</strong> Your browser will display a popup near the top of the screen.</p>
+            <p style="margin: 10px 0;"><strong>Step 3:</strong> Click <strong>"Allow"</strong> to grant microphone access.</p>
+        </div>
+
+        <p id="mic-error" style="color: #ef4444; display: none; font-weight: bold; margin-bottom: 15px;">
+            Microphone access was denied or not found. Please check your browser settings and try again.
+        </p>
+
+        <button id="test-mic-btn">Test Microphone & Continue</button>
+    </div>
+
+    <div id="simulator-screen" class="container" style="display: none;">
+        <h2>Scenario: NHS Reception</h2>
+        <p class="subtitle">Patient: Sarah | Objective: De-escalate and find the root cause.</p>
+        
+        <div class="progress-indicator">
+            <span class="dot active" id="dot-1"></span>
+            <span class="dot" id="dot-2"></span>
+            <span class="dot" id="dot-3"></span>
+        </div>
+
+        <div class="video-container">
+            <video id="scenario-video" controls playsinline>
+                <!-- Initial prompt video -->
+                <source src="Turn_1.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div id="controls-area">
+            <button id="record-btn" class="record-btn">🎤 Start Recording</button>
+            <button id="submit-btn" disabled>Evaluate Response</button>
+        </div>
+        
+        <div id="restart-area" style="display: none;">
+            <button id="restart-btn">Restart Scenario</button>
+        </div>
+
+        <h3 style="text-align: left; margin-top: 20px; font-size: 1rem; color: #f8fafc;">Your Transcript:</h3>
+        <div id="transcript-box" class="text-box">
+            Awaiting input...
+        </div>
+
+        <div id="evaluation-box" class="text-box">
+            <h3 style="margin-top: 0; color: white;" id="eval-title">Evaluation Results</h3>
+            <p id="eval-score">Score: </p>
+            <p id="eval-feedback" style="margin-bottom: 0;">Feedback: </p>
+        </div>
+    </div>
+
+    <script>
+        // State variables
+        let activeApiKey = '';
+        let currentTranscript = '';
+        let recognition;
+        
+        // Scenario State
+        let currentTurn = 1; // 1, 2, or 3
+        let isSimulationEnded = false;
+
+        // UI Elements
+        const loginScreen = document.getElementById('login-screen');
+        const introScreen = document.getElementById('intro-screen');
+        const simulatorScreen = document.getElementById('simulator-screen');
+        const errorModal = document.getElementById('error-modal');
+        const modalText = document.getElementById('modal-text');
+        
+        const unlockBtn = document.getElementById('unlock-btn');
+        const apiKeyInput = document.getElementById('api-key-input');
+        const testMicBtn = document.getElementById('test-mic-btn');
+        const micError = document.getElementById('mic-error');
+        
+        const controlsArea = document.getElementById('controls-area');
+        const restartArea = document.getElementById('restart-area');
+        const recordBtn = document.getElementById('record-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        const transcriptBox = document.getElementById('transcript-box');
+        const evaluationBox = document.getElementById('evaluation-box');
+        const evalTitle = document.getElementById('eval-title');
+        const evalScore = document.getElementById('eval-score');
+        const evalFeedback = document.getElementById('eval-feedback');
+        const scenarioVideo = document.getElementById('scenario-video');
+        
+        const dot1 = document.getElementById('dot-1');
+        const dot2 = document.getElementById('dot-2');
+        const dot3 = document.getElementById('dot-3');
+
+        // --- Helper Functions ---
+
+        function showError(message) {
+            modalText.innerText = message;
+            errorModal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            errorModal.style.display = 'none';
+        }
+
+        function updateProgressUI(turn, status) {
+            if (turn === 1) {
+                if (status === 'pass') { dot1.className = 'dot completed'; dot2.className = 'dot active'; }
+                if (status === 'fail') { dot1.className = 'dot failed'; }
+            } else if (turn === 2) {
+                if (status === 'pass') { dot2.className = 'dot completed'; dot3.className = 'dot active'; }
+                if (status === 'fail') { dot2.className = 'dot failed'; }
+            } else if (turn === 3) {
+                if (status === 'pass') { dot3.className = 'dot completed'; }
+                if (status === 'fail') { dot3.className = 'dot failed'; }
+            }
+        }
+        
+        function resetSimulation() {
+            currentTurn = 1;
+            isSimulationEnded = false;
+            
+            // Reset UI
+            dot1.className = 'dot active';
+            dot2.className = 'dot';
+            dot3.className = 'dot';
+            
+            controlsArea.style.display = 'block';
+            restartArea.style.display = 'none';
+            evaluationBox.style.display = 'none';
+            transcriptBox.innerText = 'Awaiting input...';
+            currentTranscript = '';
+            submitBtn.disabled = true;
+            
+            // Reset Video
+            scenarioVideo.src = 'Turn_1.mp4';
+            scenarioVideo.play().catch(e => console.warn(e));
+        }
+
+        // --- Event Listeners ---
+
+        restartBtn.addEventListener('click', resetSimulation);
+
+        unlockBtn.addEventListener('click', () => {
+            const key = apiKeyInput.value.trim();
+            if (key.length > 10) {
+                activeApiKey = key;
+                loginScreen.style.display = 'none';
+                introScreen.style.display = 'block';
+            } else {
+                showError("Please enter a valid API key.");
+            }
+        });
+
+        testMicBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                
+                introScreen.style.display = 'none';
+                simulatorScreen.style.display = 'block';
+                
+                setupSpeechRecognition();
+                scenarioVideo.play().catch(e => console.warn("Auto-play prevented by browser:", e));
+                
+            } catch (err) {
+                micError.style.display = 'block';
+                console.error("Microphone access failed:", err);
+            }
+        });
+
+        // --- Speech Recognition ---
+
+        function setupSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true; 
+                recognition.interimResults = true; 
+
+                let isRecording = false;
+
+                recordBtn.addEventListener('click', () => {
+                    if (isSimulationEnded) return;
+
+                    if (!isRecording) {
+                        currentTranscript = ''; 
+                        recognition.start();
+                        isRecording = true;
+                        recordBtn.innerText = "⏹️ Stop Recording";
+                        recordBtn.style.backgroundColor = "#475569";
+                        submitBtn.disabled = true;
+                        evaluationBox.style.display = 'none'; 
+                        transcriptBox.innerText = "Listening...";
+                    } else {
+                        recognition.stop();
+                        isRecording = false;
+                        recordBtn.innerText = "🎤 Start Recording";
+                        recordBtn.style.backgroundColor = "#dc2626"; 
+                        if (currentTranscript.trim().length > 0) {
+                            submitBtn.disabled = false;
+                        }
+                    }
+                });
+
+                recognition.onresult = (event) => {
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    if (finalTranscript !== '') {
+                        currentTranscript += finalTranscript + ' ';
+                        transcriptBox.innerText = currentTranscript;
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    showError("Speech recognition error: " + event.error);
+                    isRecording = false;
+                    recordBtn.innerText = "🎤 Start Recording";
+                    recordBtn.style.backgroundColor = "#dc2626";
+                };
+            } else {
+                showError("Your browser does not support Speech Recognition. Please use Chrome or Edge.");
+            }
+        }
+
+        // --- AI Evaluation Logic ---
+
+        function getPromptForCurrentTurn() {
+            let baseInstruction = "You are an expert assessor evaluating a receptionist handling an anxious patient (Sarah) in an NHS environment. Evaluate the user's spoken response. ";
+            let specificInstruction = "";
+
+            if (currentTurn === 1) {
+                specificInstruction = "The patient just complained: 'Excuse me. I've been sat waiting for over an hour now. My appointment was at two. What exactly is going on?'\n\nTURN 1 GOAL: Detect validation. Did the user acknowledge the 1-hour wait as a factual, frustrating experience (assuming truth based on Miller's Law) and apologize? \n\nCRITICAL: If the user argues with her, is defensive, tells her to sit down without explaining, or ignores the wait time, assign a score below 70. If they validate the wait and apologize, assign a score of 70 or higher.";
+            } else if (currentTurn === 2) {
+                specificInstruction = "The patient just complained defensively: 'Well, it feels like nobody here actually listens. You just fob people off. It’s happened to me before, you know.'\n\nTURN 2 GOAL: Detect emotional regulation. Did the user ignore the personal attack ('you people never actually listen') and invite further communication? \n\nCRITICAL: If the user argues back ('we do listen', 'I am not fobbing you off'), assign a score below 70. If they suspend judgment, remain calm, and ask how they can help or ask her to explain further, assign a score of 70 or higher.";
+            } else if (currentTurn === 3) {
+                specificInstruction = "The patient just revealed her true fear: '(Deep breath) Look, I'm sorry for snapping... I'm just terrified. I really need to know if my test results have come back yet.'\n\nTURN 3 GOAL: Detect practical help. Did the user offer immediate help (e.g., asking for Name and Date of Birth to check her file) rather than applying bureaucratic rules? \n\nCRITICAL: If they tell her to 'call the dedicated results line', tell her they can't help her, or fob her off, assign a score below 70. If they offer to check her file right now by asking for her details, assign a score of 70 or higher.";
+            }
+
+            return baseInstruction + specificInstruction + "\n\nProvide a JSON response with 'score' (0-100) and 'feedback' (1-2 sentences max).";
+        }
+
+        submitBtn.addEventListener('click', async () => {
+            const finalSpeech = currentTranscript.trim();
+            if (!finalSpeech) {
+                showError("Please record a response first.");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Evaluating Response...";
+            recordBtn.disabled = true;
+
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
+            
+            const requestBody = {
+                systemInstruction: {
+                    parts: [{ text: getPromptForCurrentTurn() }]
+                },
+                contents: [{
+                    parts: [{ text: `Evaluate this response from the receptionist: "${finalSpeech}"` }]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            score: { type: "INTEGER" },
+                            feedback: { type: "STRING" }
+                        },
+                        required: ["score", "feedback"]
+                    }
+                }
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error?.message || "Unknown API Error");
+                }
+
+                const aiResponseText = data.candidates[0].content.parts[0].text;
+                const result = JSON.parse(aiResponseText);
+                
+                const passed = result.score >= 70;
+
+                // Display Results
+                evaluationBox.style.display = 'block';
+                evalScore.innerText = `Score: ${result.score}%`;
+                evalFeedback.innerText = result.feedback;
+
+                if (passed) {
+                    evaluationBox.style.backgroundColor = '#166534'; // Green
+                    evaluationBox.style.borderColor = '#14532d';
+                    evalTitle.innerText = "Turn Passed";
+                    updateProgressUI(currentTurn, 'pass');
+                    
+                    if (currentTurn === 1) {
+                        scenarioVideo.src = "Turn_2.mp4";
+                        currentTurn = 2;
+                    } else if (currentTurn === 2) {
+                        scenarioVideo.src = "Turn_3.mp4";
+                        currentTurn = 3;
+                    } else if (currentTurn === 3) {
+                        scenarioVideo.src = "The_Finale__Success.mp4";
+                        isSimulationEnded = true;
+                        evalTitle.innerText = "Simulation Complete: Success!";
+                    }
+                } else {
+                    evaluationBox.style.backgroundColor = '#991b1b'; // Red
+                    evaluationBox.style.borderColor = '#7f1d1d';
+                    evalTitle.innerText = "Turn Failed";
+                    updateProgressUI(currentTurn, 'fail');
+                    
+                    scenarioVideo.src = "The_Finale__Failure.mp4";
+                    isSimulationEnded = true;
+                }
+                
+                scenarioVideo.play();
+                
+                if (isSimulationEnded) {
+                    controlsArea.style.display = 'none';
+                    restartArea.style.display = 'block';
+                }
+
+            } catch (error) {
+                showError("Failed to evaluate. API Error: " + error.message);
+            } finally {
+                if (!isSimulationEnded) {
+                    submitBtn.innerText = "Evaluate Response";
+                    submitBtn.disabled = true; // wait for new audio
+                    recordBtn.disabled = false;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
