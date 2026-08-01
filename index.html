@@ -79,6 +79,17 @@
             background-color: #b91c1c;
         }
 
+        /* Attention animation for when it's the user's turn */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .pulse-btn {
+            animation: pulse 1.5s infinite;
+            border: 2px solid white;
+        }
+
         .video-container {
             margin-bottom: 20px;
             border-radius: 8px;
@@ -198,7 +209,7 @@
     </div>
 
     <div id="login-screen" class="container">
-        <h1>Simulator Alpha (Miller's Law)</h1>
+        <h1>Simulator Beta (Miller's Law)</h1>
         <p class="subtitle">Please enter your API key to access the multi-turn training environment.</p>
         <input type="password" id="api-key-input" placeholder="Paste Google Gemini API Key here (starts with AIza...)" autocomplete="off">
         <br>
@@ -234,7 +245,6 @@
 
         <div class="video-container">
             <video id="scenario-video" controls playsinline>
-                <!-- Initial prompt video -->
                 <source src="Turn_1.mp4" type="video/mp4">
                 Your browser does not support the video tag.
             </video>
@@ -339,6 +349,7 @@
             transcriptBox.innerText = 'Awaiting input...';
             currentTranscript = '';
             submitBtn.disabled = true;
+            recordBtn.classList.remove('pulse-btn');
             
             // Reset Video
             scenarioVideo.src = 'Turn_1.mp4';
@@ -377,6 +388,15 @@
             }
         });
 
+        // UX: When a video finishes playing, prompt user for next input
+        scenarioVideo.addEventListener('ended', () => {
+            if (!isSimulationEnded && simulatorScreen.style.display === 'block') {
+                recordBtn.classList.add('pulse-btn');
+                evaluationBox.style.display = 'none'; // Hide the old result
+                transcriptBox.innerText = `Sarah is waiting... Click 'Start Recording' to reply for Turn ${currentTurn}.`;
+            }
+        });
+
         // --- Speech Recognition ---
 
         function setupSpeechRecognition() {
@@ -390,6 +410,9 @@
 
                 recordBtn.addEventListener('click', () => {
                     if (isSimulationEnded) return;
+
+                    // Remove pulse animation when they click
+                    recordBtn.classList.remove('pulse-btn');
 
                     if (!isRecording) {
                         try {
@@ -430,18 +453,16 @@
                     }
                     transcriptBox.innerText = currentTranscript + interimTranscript;
                     
-                    // Auto-enable evaluate button as soon as ANY text is detected
                     if (currentTranscript.trim().length > 0 || interimTranscript.trim().length > 0) {
                         submitBtn.disabled = false;
                     }
                 };
 
-                // Catch the browser automatically disconnecting the mic (e.g., after a pause)
                 recognition.onend = () => {
                     isRecording = false;
                     recordBtn.innerText = "🎤 Start Recording";
                     recordBtn.style.backgroundColor = "#dc2626";
-                    if (transcriptBox.innerText.replace('Listening...', '').trim().length > 0) {
+                    if (transcriptBox.innerText.replace('Listening...', '').trim().length > 0 && transcriptBox.innerText.indexOf('Sarah is waiting') === -1) {
                         submitBtn.disabled = false;
                     }
                 };
@@ -475,11 +496,9 @@
         }
 
         submitBtn.addEventListener('click', async () => {
-            // Force stop the microphone if they click evaluate while it is still running
             try { recognition.stop(); } catch(e) {}
 
-            // Grab exactly what is on the screen (includes final and interim text)
-            const finalSpeech = transcriptBox.innerText.replace('Listening...', '').trim();
+            const finalSpeech = transcriptBox.innerText.replace('Listening...', '').replace(/Sarah is waiting.*/, '').trim();
             if (!finalSpeech) {
                 showError("Please record a response first.");
                 return;
@@ -537,7 +556,7 @@
                 if (passed) {
                     evaluationBox.style.backgroundColor = '#166534'; // Green
                     evaluationBox.style.borderColor = '#14532d';
-                    evalTitle.innerText = "Turn Passed";
+                    evalTitle.innerText = `Turn ${currentTurn} Passed`;
                     updateProgressUI(currentTurn, 'pass');
                     
                     if (currentTurn === 1) {
@@ -554,7 +573,7 @@
                 } else {
                     evaluationBox.style.backgroundColor = '#991b1b'; // Red
                     evaluationBox.style.borderColor = '#7f1d1d';
-                    evalTitle.innerText = "Turn Failed";
+                    evalTitle.innerText = `Turn ${currentTurn} Failed`;
                     updateProgressUI(currentTurn, 'fail');
                     
                     scenarioVideo.src = "The_Finale__Failure.mp4";
