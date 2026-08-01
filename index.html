@@ -81,13 +81,15 @@
 
         /* Attention animation for when it's the user's turn */
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.9); transform: scale(1); }
+            50% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); transform: scale(1.05); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); transform: scale(1); }
         }
         .pulse-btn {
-            animation: pulse 1.5s infinite;
+            animation: pulse 1.2s infinite;
             border: 2px solid white;
+            z-index: 10;
+            position: relative;
         }
 
         .video-container {
@@ -398,8 +400,10 @@
         scenarioVideo.addEventListener('ended', () => {
             if (!isSimulationEnded && simulatorScreen.style.display === 'block') {
                 recordBtn.classList.add('pulse-btn');
+                let btnText = currentTurn === 1 ? "🎤 Start Recording" : "🎤 Continue Recording";
+                recordBtn.innerText = btnText;
                 // The evaluation box now stays on screen so the user has time to read it!
-                transcriptBox.innerText = `Sarah is waiting... Click 'Start Recording' to reply for Turn ${currentTurn}.`;
+                transcriptBox.innerText = `Sarah is waiting... Click '${btnText.replace('🎤 ', '')}' to reply for Turn ${currentTurn}.`;
             }
         });
 
@@ -436,7 +440,8 @@
                     } else {
                         recognition.stop();
                         isRecording = false;
-                        recordBtn.innerText = "🎤 Start Recording";
+                        let idleText = currentTurn === 1 ? "🎤 Start Recording" : "🎤 Continue Recording";
+                        recordBtn.innerText = idleText;
                         recordBtn.style.backgroundColor = "#dc2626"; 
                         if (currentTranscript.trim().length > 0) {
                             submitBtn.disabled = false;
@@ -466,7 +471,8 @@
 
                 recognition.onend = () => {
                     isRecording = false;
-                    recordBtn.innerText = "🎤 Start Recording";
+                    let idleText = currentTurn === 1 ? "🎤 Start Recording" : "🎤 Continue Recording";
+                    recordBtn.innerText = idleText;
                     recordBtn.style.backgroundColor = "#dc2626";
                     if (transcriptBox.innerText.replace('Listening...', '').trim().length > 0 && transcriptBox.innerText.indexOf('Sarah is waiting') === -1) {
                         submitBtn.disabled = false;
@@ -476,7 +482,8 @@
                 recognition.onerror = (event) => {
                     showError("Speech recognition error: " + event.error);
                     isRecording = false;
-                    recordBtn.innerText = "🎤 Start Recording";
+                    let idleText = currentTurn === 1 ? "🎤 Start Recording" : "🎤 Continue Recording";
+                    recordBtn.innerText = idleText;
                     recordBtn.style.backgroundColor = "#dc2626";
                 };
             } else {
