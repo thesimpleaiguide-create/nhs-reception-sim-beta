@@ -125,6 +125,12 @@
             margin-bottom: 10px;
         }
 
+        #eval-feedback {
+            margin-bottom: 0;
+            white-space: pre-wrap; /* This ensures the paragraph breaks (\n\n) from the AI render correctly */
+            line-height: 1.6;
+        }
+
         .progress-indicator {
             display: flex;
             justify-content: center;
@@ -267,7 +273,7 @@
         <div id="evaluation-box" class="text-box">
             <h3 style="margin-top: 0; color: white;" id="eval-title">Evaluation Results</h3>
             <p id="eval-score">Score: </p>
-            <p id="eval-feedback" style="margin-bottom: 0;">Feedback: </p>
+            <p id="eval-feedback"></p>
         </div>
     </div>
 
@@ -392,7 +398,7 @@
         scenarioVideo.addEventListener('ended', () => {
             if (!isSimulationEnded && simulatorScreen.style.display === 'block') {
                 recordBtn.classList.add('pulse-btn');
-                evaluationBox.style.display = 'none'; // Hide the old result
+                // The evaluation box now stays on screen so the user has time to read it!
                 transcriptBox.innerText = `Sarah is waiting... Click 'Start Recording' to reply for Turn ${currentTurn}.`;
             }
         });
@@ -492,7 +498,26 @@
                 specificInstruction = "The patient just revealed her true fear: '(Deep breath) Look, I'm sorry for snapping... I'm just terrified. I really need to know if my test results have come back yet.'\n\nTURN 3 GOAL: Detect practical help. Did the user offer immediate help (e.g., asking for Name and Date of Birth to check her file) rather than applying bureaucratic rules? \n\nCRITICAL: If they tell her to 'call the dedicated results line', tell her they can't help her, or fob her off, assign a score below 70. If they offer to check her file right now by asking for her details, assign a score of 70 or higher.";
             }
 
-            return baseInstruction + specificInstruction + "\n\nProvide a JSON response with 'score' (0-100) and 'feedback' (1-2 sentences max).";
+            const lindsayPersona = `
+Role: The Lindsay Feedback Coach
+You are a warm, encouraging, and psychologically informed coach supporting non-clinical staff in an NHS General Practice (GP) setting. You provide feedback to staff reflecting on their instinctive responses, body language, tone, and the "hidden drivers" behind difficult patient interactions.
+
+Strict Tone & Style Constraints:
+- NO CONTRACTIONS: You must never use abbreviated words. You must use full forms at all times (e.g., use "It is", "Do not", "You are", "cannot").
+- MANDATORY PARAGRAPH BREAKS: Do not present the feedback as a single block of text.
+- THE "NEXT TIME" RULE: You MUST always start a new paragraph immediately before using the phrase "Next time" or "Next time you are..."
+- THE "AFFIRMATION" RULE: You MUST always start a new paragraph immediately before using the phrases "You are already," "You are showing," or "You should be proud."
+- NO BULLET POINTS: Never use bullet points, numbered lists, or structured formatting. The response must be fluid and conversational.
+- STRICT CONTEXT: All feedback must be rooted in the environment of an NHS General Practice. Focus on the daily reality of GP reception desks.
+- FORBIDDEN PHRASES: Never use "land", "show up", "I hear you", "it is worth knowing", "AI Feedback Goal", "Student Input", "Correct".
+- Peer-to-Peer Tone: Your tone is warm, direct, encouraging, and human. Treat the user as a colleague.
+
+Feedback Structure (Strictly 4 to 5 Sentences Total):
+1. Validation & Normalization (Paragraph 1): Acknowledge what has been shared without judgment. Normalize the experience as a natural biological stress response or a vital act of professional empathy.
+2. Practical Action (Paragraph 2 - Start with "Next time"): Offer one small, practical adjustment related to voice tone, speech pace, Miller's law, or body language.
+3. Affirmation & Forward Motion (Paragraph 3 - Start with "You are already"): End with a statement that builds confidence and reassures them.`;
+
+            return baseInstruction + specificInstruction + "\n\nCRITICAL: Provide a JSON response with 'score' (0-100) and 'feedback'. The 'feedback' string MUST be written entirely in the persona of The Lindsay Feedback Coach using the strict rules and paragraphing requirements below:\n" + lindsayPersona;
         }
 
         submitBtn.addEventListener('click', async () => {
