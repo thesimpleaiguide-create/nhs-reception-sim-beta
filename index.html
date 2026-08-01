@@ -79,6 +79,22 @@
             background-color: #b91c1c;
         }
 
+        /* Loading Spinner */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: text-bottom;
+        }
+
         /* Attention animation for when it's the user's turn */
         @keyframes pulse {
             0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.9); transform: scale(1); }
@@ -537,7 +553,7 @@ Feedback Structure (Strictly 4 to 5 Sentences Total):
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerText = "Evaluating Response...";
+            submitBtn.innerHTML = '<span class="spinner"></span> Evaluating...';
             recordBtn.disabled = true;
 
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${activeApiKey}`;
