@@ -392,14 +392,18 @@
                     if (isSimulationEnded) return;
 
                     if (!isRecording) {
-                        currentTranscript = ''; 
-                        recognition.start();
-                        isRecording = true;
-                        recordBtn.innerText = "⏹️ Stop Recording";
-                        recordBtn.style.backgroundColor = "#475569";
-                        submitBtn.disabled = true;
-                        evaluationBox.style.display = 'none'; 
-                        transcriptBox.innerText = "Listening...";
+                        try {
+                            currentTranscript = ''; 
+                            recognition.start();
+                            isRecording = true;
+                            recordBtn.innerText = "⏹️ Stop Recording";
+                            recordBtn.style.backgroundColor = "#475569";
+                            submitBtn.disabled = true;
+                            evaluationBox.style.display = 'none'; 
+                            transcriptBox.innerText = "Listening...";
+                        } catch(e) {
+                            console.warn("Microphone already active");
+                        }
                     } else {
                         recognition.stop();
                         isRecording = false;
@@ -413,14 +417,32 @@
 
                 recognition.onresult = (event) => {
                     let finalTranscript = '';
+                    let interimTranscript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
                             finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
                         }
                     }
                     if (finalTranscript !== '') {
                         currentTranscript += finalTranscript + ' ';
-                        transcriptBox.innerText = currentTranscript;
+                    }
+                    transcriptBox.innerText = currentTranscript + interimTranscript;
+                    
+                    // Auto-enable evaluate button as soon as ANY text is detected
+                    if (currentTranscript.trim().length > 0 || interimTranscript.trim().length > 0) {
+                        submitBtn.disabled = false;
+                    }
+                };
+
+                // Catch the browser automatically disconnecting the mic (e.g., after a pause)
+                recognition.onend = () => {
+                    isRecording = false;
+                    recordBtn.innerText = "🎤 Start Recording";
+                    recordBtn.style.backgroundColor = "#dc2626";
+                    if (transcriptBox.innerText.replace('Listening...', '').trim().length > 0) {
+                        submitBtn.disabled = false;
                     }
                 };
 
@@ -453,7 +475,11 @@
         }
 
         submitBtn.addEventListener('click', async () => {
-            const finalSpeech = currentTranscript.trim();
+            // Force stop the microphone if they click evaluate while it is still running
+            try { recognition.stop(); } catch(e) {}
+
+            // Grab exactly what is on the screen (includes final and interim text)
+            const finalSpeech = transcriptBox.innerText.replace('Listening...', '').trim();
             if (!finalSpeech) {
                 showError("Please record a response first.");
                 return;
